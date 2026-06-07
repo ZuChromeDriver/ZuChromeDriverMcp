@@ -1,69 +1,69 @@
 # ZuChromeDriverMcp
 
-MCP-сервер для автоматизации Chrome из .NET: [Model Context Protocol](https://modelcontextprotocol.io/) поверх **[ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver)**, без PuppeteerSharp и без дублирования CDP-клиента.
+MCP server for Chrome automation from .NET: [Model Context Protocol](https://modelcontextprotocol.io/) on top of **[ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver)**, without PuppeteerSharp and without duplicating the CDP client.
 
-Два MCP-хоста поверх общего **`ZuChromeDriverMcp.Core`**:
+Two MCP hosts on top of shared **`ZuChromeDriverMcp.Core`**:
 
-| Хост | Назначение |
-|------|------------|
-| **`ZuChromeDriverMcp`** (WPF) | **Рекомендуется** — UI с настройками, профилями и рантайм-панелью; HTTP MCP на localhost; headless stdio через `--stdio` |
-| **`ZuChromeDriverMcp.Host`** | Консольный stdio-хост без UI — минимальный вариант |
+| Host | Purpose |
+|------|---------|
+| **`ZuChromeDriverMcp`** (WPF) | **Recommended** — UI with settings, profiles, and runtime panel; HTTP MCP on localhost; headless stdio via `--stdio` |
+| **`ZuChromeDriverMcp.Host`** | Console stdio host without UI — minimal option |
 
-## Возможности
+## Features
 
-Навигация, скрипты, скриншоты, вкладки, a11y-snapshot с uid, клик/ввод, сеть и консоль, heap snapshot.
+Navigation, scripts, screenshots, tabs, a11y snapshot with uid, click/input, network and console, heap snapshot.
 
-### Профили Chrome
+### Chrome Profiles
 
-Список, подключение и отключение профилей Chrome (`list_chrome_profiles`, `connect_chrome`, `disconnect_chrome`).
+List, connect, and disconnect Chrome profiles (`list_chrome_profiles`, `connect_chrome`, `disconnect_chrome`).
 
 ## TODO
 
-- **Lighthouse** — `lighthouse_audit` (a11y, SEO, best practices); референс: [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp).
+- **Lighthouse** — `lighthouse_audit` (a11y, SEO, best practices); reference: [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp).
 - **Performance** — `performance_start_trace`, `performance_stop_trace`, `performance_analyze_insight` (CDP `Tracing` + Performance Insights).
 
-## Требования
+## Requirements
 
 - .NET 10 SDK
-- Google Chrome / Chromium с remote debugging
+- Google Chrome / Chromium with remote debugging
 
-## Запуск MCP-сервера
+## Running the MCP Server
 
-### WPF-хост
+### WPF Host
 
-**Рекомендуется** — удобнее для повседневной работы и подключения в Cursor: настройки, профили, рантайм-панель.
+**Recommended** — more convenient for day-to-day use and connecting in Cursor: settings, profiles, runtime panel.
 
-GUI + HTTP MCP (по умолчанию):
+GUI + HTTP MCP (default):
 
 ```bash
 dotnet run --project ZuChromeDriverMcp/ZuChromeDriverMcp.csproj
 ```
 
-MCP endpoint: `http://127.0.0.1:5100/mcp` (порт и путь настраиваются в UI или через env).
+MCP endpoint: `http://127.0.0.1:5100/mcp` (port and path are configurable in the UI or via env).
 
-Headless stdio (без окна, как Host):
+Headless stdio (no window, like Host):
 
 ```bash
 dotnet run --project ZuChromeDriverMcp/ZuChromeDriverMcp.csproj -- --stdio
 ```
 
-В GUI: вкладки **Настройки**, **Профили**, **Управление** (Navigate / Screenshot / вкладки), **Рантайм**, **MCP**.
+In the GUI: **Settings**, **Profiles**, **Control** (Navigate / Screenshot / tabs), **Runtime**, **MCP** tabs.
 
-### Профили Chrome (WPF)
+### Chrome Profiles (WPF)
 
-Каталог профилей: `{exe_dir}/Profiles/` (рядом с исполняемым файлом). Список и выбранный профиль сохраняются в `Profiles/profiles.json`.
+Profile directory: `{exe_dir}/Profiles/` (next to the executable). The list and selected profile are saved in `Profiles/profiles.json`.
 
-По умолчанию создаются:
+Created by default:
 
-| Профиль | Тип | Путь |
-|---------|-----|------|
-| **Temp** | Временный | `%TEMP%` — удаляется при закрытии Chrome |
-| **Profile1** | Папка | `{exe_dir}/Profiles/Profile1` |
-| **Profile2** | Папка | `{exe_dir}/Profiles/Profile2` |
+| Profile | Type | Path |
+|---------|------|------|
+| **Temp** | Temporary | `%TEMP%` — deleted when Chrome closes |
+| **Profile1** | Folder | `{exe_dir}/Profiles/Profile1` |
+| **Profile2** | Folder | `{exe_dir}/Profiles/Profile2` |
 
-На вкладке **Профили** можно выбрать активный профиль, добавить папочный профиль (подпапка в `Profiles/`) или профиль с произвольным путём. Выбор сохраняется для следующих запусков.
+On the **Profiles** tab you can select the active profile, add a folder profile (subfolder in `Profiles/`), or a profile with a custom path. The selection is saved for future runs.
 
-### Подключение в Cursor
+### Connecting in Cursor
 
 ```json
 {
@@ -75,53 +75,53 @@ dotnet run --project ZuChromeDriverMcp/ZuChromeDriverMcp.csproj -- --stdio
 }
 ```
 
-### Host (stdio) — второй вариант
+### Host (stdio) — Alternative
 
-Второй MCP-хост: консольный stdio без UI — минимальный вариант для скриптов и CI:
+Second MCP host: console stdio without UI — minimal option for scripts and CI:
 
 ```bash
 dotnet run --project ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj
 ```
 
-Опционально — отключить категорию tools (как в chrome-devtools-mcp):
+Optionally — disable a tool category (as in chrome-devtools-mcp):
 
 ```bash
 dotnet run --project ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj -- --category-network=false
 ```
 
-Логи пишутся в **stderr**; stdout занят JSON-RPC MCP — не перенаправляйте его в консоль вручную.
+Logs are written to **stderr**; stdout is reserved for JSON-RPC MCP — do not redirect it to the console manually.
 
-## Типичный сценарий агента
+## Typical Agent Workflow
 
-1. `list_pages` → выбрать вкладку  
-2. `select_page` с `pageId`  
-3. `navigate` или `new_page`  
-4. `take_snapshot` → получить **uid** элементов  
-5. `click` / `fill` с `uid` (или `selector` для простых случаев)  
-6. При необходимости — `list_console_messages` / `list_network_requests`
+1. `list_pages` → select a tab  
+2. `select_page` with `pageId`  
+3. `navigate` or `new_page`  
+4. `take_snapshot` → get element **uid**  
+5. `click` / `fill` with `uid` (or `selector` for simple cases)  
+6. If needed — `list_console_messages` / `list_network_requests`
 
-## Структура решения
+## Solution Structure
 
-| Проект | Назначение |
-|--------|------------|
-| **`ZuChromeDriverMcp.Host`** | Console, MCP stdio, DI, lifecycle Chrome |
+| Project | Purpose |
+|---------|---------|
+| **`ZuChromeDriverMcp.Host`** | Console, MCP stdio, DI, Chrome lifecycle |
 | **`ZuChromeDriverMcp.Core`** | Tools, snapshot, pages, collectors, mutex |
-| **`ZuChromeDriverMcp`** | WPF — второй MCP-хост: HTTP + `--stdio`, MVVM UI, рантайм-панель |
-| **`ZuChromeDriver`** *(NuGet)* | Драйвер CDP + WebDriver-фасад |
-| **`ChromeDevToolsClient`** *(NuGet, транзитивно)* | WebSocket JSON-RPC к CDP |
+| **`ZuChromeDriverMcp`** | WPF — second MCP host: HTTP + `--stdio`, MVVM UI, runtime panel |
+| **`ZuChromeDriver`** *(NuGet)* | CDP driver + WebDriver facade |
+| **`ChromeDevToolsClient`** *(NuGet, transitive)* | WebSocket JSON-RPC to CDP |
 
-## Документация
+## Documentation
 
-| Документ | Содержание |
-|----------|------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура MCP-слоя, потоки данных, компоненты |
+| Document | Contents |
+|----------|----------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | MCP layer architecture, data flows, components |
 
-## Принципы
+## Principles
 
-- **CDP только через `ChromeDevToolsClient`** — MCP не добавляет свой транспорт.
-- **Автоматизация через `ZuChromeDriver`** — навигация, скрипты, клики не дублируются в MCP.
-- **MCP-слой** — protocol, mapping tools, snapshot uid, collectors.
+- **CDP only through `ChromeDevToolsClient`** — MCP does not add its own transport.
+- **Automation through `ZuChromeDriver`** — navigation, scripts, clicks are not duplicated in MCP.
+- **MCP layer** — protocol, tool mapping, snapshot uid, collectors.
 
-## Лицензия
+## License
 
-Следует лицензии **ZuChromeDriver** (Apache 2.0) для кода драйвера; MCP-слой — по лицензии репозитория.
+Follows the **ZuChromeDriver** license (Apache 2.0) for driver code; MCP layer — per repository license.

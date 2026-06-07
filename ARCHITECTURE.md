@@ -1,20 +1,20 @@
-# Архитектура ZuChromeDriverMcp
+# ZuChromeDriverMcp Architecture
 
-Документ описывает **MCP-слой** репозитория ZuChromeDriverMcp: как он связан с [ZuChromeDriver](https://github.com/ToCSharp/ZuChromeDriver) и что остаётся только в protocol/mapping.
+This document describes the **MCP layer** of the ZuChromeDriverMcp repository: how it connects to [ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver) and what remains only in protocol/mapping.
 
-Базовый стек драйвера (CDP WebSocket, Connect, WebView, ElementCommands) — в репозитории [ZuChromeDriver](https://github.com/ToCSharp/ZuChromeDriver).
-
----
-
-## Назначение
-
-**ZuChromeDriverMcp** даёт LLM-агентам инструменты для управления Chrome через MCP. Два хоста поверх общего Core: **WPF** (основной — GUI, настройки, HTTP MCP) и **Host** (второй — консольный stdio). Реализация **не** запускает отдельный CDP-клиент и **не** использует PuppeteerSharp: один экземпляр **`ZuChromeDriver`** обслуживает все tool-вызовы.
-
-Референс API и категорий tools — [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) (Node). Lighthouse и Performance — в [TODO](README.md#todo).
+The base driver stack (CDP WebSocket, Connect, WebView, ElementCommands) lives in the [ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver) repository.
 
 ---
 
-## Обзор слоёв
+## Purpose
+
+**ZuChromeDriverMcp** gives LLM agents tools to control Chrome via MCP. Two hosts on top of shared Core: **WPF** (primary — GUI, settings, HTTP MCP) and **Host** (secondary — console stdio). The implementation does **not** start a separate CDP client and does **not** use PuppeteerSharp: a single **`ZuChromeDriver`** instance serves all tool calls.
+
+API and tool category reference — [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) (Node). Lighthouse and Performance — in [TODO](README.md#todo).
+
+---
+
+## Layer Overview
 
 ```mermaid
 flowchart TB
@@ -58,39 +58,39 @@ flowchart TB
   CS <-->|JSON-RPC| DBG
 ```
 
-### Границы ответственности
+### Responsibility Boundaries
 
-| Слой | Отвечает за | Не отвечает за |
-|------|-------------|----------------|
-| **WPF** | **Основной хост** — HTTP MCP (GUI) или `--stdio`; настройки, профили, MVVM UI, рантайм-панель | Дублирование tool-логики в UI |
-| **Host** | Второй хост — stdio transport, DI, auto-connect Chrome, логи в stderr | CDP, DOM, клики |
-| **Core** | MCP tools, mutex, `McpOperatorService`, `McpRuntimeMonitor`, конфиг | Запуск процесса WPF/Host |
-| **ZuChromeDriver** | Chrome lifecycle, CDP-сессия, WebDriver-семантика | MCP protocol |
-| **ChromeDevToolsClient** | WebSocket, JSON-RPC, домены CDP | Выбор вкладки, запуск Chrome |
+| Layer | Responsible for | Not responsible for |
+|-------|-----------------|---------------------|
+| **WPF** | **Primary host** — HTTP MCP (GUI) or `--stdio`; settings, profiles, MVVM UI, runtime panel | Duplicating tool logic in the UI |
+| **Host** | Secondary host — stdio transport, DI, auto-connect Chrome, logs to stderr | CDP, DOM, clicks |
+| **Core** | MCP tools, mutex, `McpOperatorService`, `McpRuntimeMonitor`, config | Starting WPF/Host process |
+| **ZuChromeDriver** | Chrome lifecycle, CDP session, WebDriver semantics | MCP protocol |
+| **ChromeDevToolsClient** | WebSocket, JSON-RPC, CDP domains | Tab selection, Chrome launch |
 
 ---
 
-## Проекты решения
+## Solution Projects
 
 ```
 ZuChromeDriverMcp/
-├── ZuChromeDriverMcp/               # net10.0-windows WPF — основной MCP-хост
+├── ZuChromeDriverMcp/               # net10.0-windows WPF — primary MCP host
 ├── ZuChromeDriverMcp.Core/          # net10.0 classlib — tools + browser context
-├── ZuChromeDriverMcp.Host/          # net10.0 exe — второй MCP-хост (stdio)
+├── ZuChromeDriverMcp.Host/          # net10.0 exe — secondary MCP host (stdio)
 └── ZuChromeDriverMcp.slnx
 ```
 
-| Проект | Зависимости | Роль |
-|--------|-------------|------|
+| Project | Dependencies | Role |
+|---------|--------------|------|
 | **WPF** | Core, `ModelContextProtocol.AspNetCore`, `CommunityToolkit.Mvvm` | HTTP MCP + GUI; `--stdio` headless; MVVM operator UI |
 | **Core** | ZuChromeDriver *(NuGet)*, `ModelContextProtocol` | Tools, `McpBrowserContext`, `McpOperatorService`, `McpRuntimeMonitor` |
 | **Host** | Core, `ModelContextProtocol`, `Microsoft.Extensions.Hosting` | stdio MCP, `McpBrowserLifetimeService`, `AddZuChromeDriverMcpTools` |
 
-Отдельный **`ZuChromeDriverMcp.Chrome`** не планируется: CDP и профили — в **`ZuChromeDriver/ChromeDevTools/`**.
+A separate **`ZuChromeDriverMcp.Chrome`** is not planned: CDP and profiles live in **`ZuChromeDriver/ChromeDevTools/`**.
 
 ---
 
-## Жизненный цикл процесса
+## Process Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -121,50 +121,50 @@ sequenceDiagram
   Ctx->>ZCD: Close()
 ```
 
-1. **`McpBrowserLifetimeService`** при старте вызывает **`McpBrowserContext.ConnectAsync()`** → **`ZuChromeDriver.Connect()`**.
-2. MCP server принимает tool-вызовы через HTTP (WPF GUI) или stdio (WPF `--stdio` / Host).
-3. При остановке приложения вызывается **`Close()`** — закрытие вкладок / процесса Chrome (режим attach — см. конфиг).
+1. **`McpBrowserLifetimeService`** calls **`McpBrowserContext.ConnectAsync()`** → **`ZuChromeDriver.Connect()`** on startup.
+2. The MCP server accepts tool calls via HTTP (WPF GUI) or stdio (WPF `--stdio` / Host).
+3. On application shutdown, **`Close()`** is called — closing tabs / Chrome process (attach mode — see config).
 
 ---
 
-## Компоненты Core
+## Core Components
 
-### `McpHostOptions` / конфигурация
+### `McpHostOptions` / Configuration
 
-Файл: `ZuChromeDriverMcp.Core/Configuration/McpHostOptions.cs`
+File: `ZuChromeDriverMcp.Core/Configuration/McpHostOptions.cs`
 
-- Секция **`ZuChromeDriverMcp`** в configuration (JSON / env).
-- Env **`ZU_CHROME_DRIVER_MCP_*`** с приоритетом поверх JSON.
-- Метод **`ToChromeDriverConfig()`** — маппинг в **`ChromeDriverConfig`** (порт, headless, профиль, attach, **FrameTracker** / **DomTracker** / browser log).
-- **`EnableDevToolsCollectorOnConnect`** — подписка **`McpDevToolsCollector`** на Network/Runtime (env `ENABLE_DEVTOOLS_COLLECTOR`, по умолчанию false).
-- **`McpCategoryOptions`** — флаги категорий tools; CLI `--category-*`, env `ZU_CHROME_DRIVER_MCP_CATEGORY_*`.
-- **`McpToolGate`** — при отключённой категории tool возвращает actionable ошибку.
+- Section **`ZuChromeDriverMcp`** in configuration (JSON / env).
+- Env **`ZU_CHROME_DRIVER_MCP_*`** takes priority over JSON.
+- Method **`ToChromeDriverConfig()`** — maps to **`ChromeDriverConfig`** (port, headless, profile, attach, **FrameTracker** / **DomTracker** / browser log).
+- **`EnableDevToolsCollectorOnConnect`** — subscribes **`McpDevToolsCollector`** to Network/Runtime (env `ENABLE_DEVTOOLS_COLLECTOR`, default false).
+- **`McpCategoryOptions`** — tool category flags; CLI `--category-*`, env `ZU_CHROME_DRIVER_MCP_CATEGORY_*`.
+- **`McpToolGate`** — when a category is disabled, the tool returns an actionable error.
 
 ### `McpBrowserContext`
 
-Файл: `ZuChromeDriverMcp.Core/Browser/McpBrowserContext.cs`
+File: `ZuChromeDriverMcp.Core/Browser/McpBrowserContext.cs`
 
-- Держит **один** **`ZuChromeDriver`** на процесс MCP.
-- **`ConnectAsync`** — Connect; при **`EnableDevToolsCollectorOnConnect`** — подписка **`McpDevToolsCollector`** на Network/Runtime.
-- **`EnsureCollectorForCurrentSessionAsync`** — переподписка collector после смены CDP-сессии (connect / `select_page` / `new_page`).
-- **`SnapshotStore`**, **`Collector`** — общее состояние для tools.
-- **`SaveTemporaryFileAsync`** — PNG скриншотов в каталог артефактов (`McpHostOptions.GetArtifactsDirectory()`): по умолчанию `{exe_dir}/Temp/zu-chrome-driver-mcp\`, опционально `%TEMP%\zu-chrome-driver-mcp\` (`ARTIFACTS_LOCATION=system-temp`).
+- Holds **one** **`ZuChromeDriver`** per MCP process.
+- **`ConnectAsync`** — Connect; when **`EnableDevToolsCollectorOnConnect`** — subscribes **`McpDevToolsCollector`** to Network/Runtime.
+- **`EnsureCollectorForCurrentSessionAsync`** — re-subscribes collector after CDP session change (connect / `select_page` / `new_page`).
+- **`SnapshotStore`**, **`Collector`** — shared state for tools.
+- **`SaveTemporaryFileAsync`** — PNG screenshots to artifacts directory (`McpHostOptions.GetArtifactsDirectory()`): default `{exe_dir}/Temp/zu-chrome-driver-mcp\`, optionally `%TEMP%\zu-chrome-driver-mcp\` (`ARTIFACTS_LOCATION=system-temp`).
 
 ### `McpPageService`
 
-- Список вкладок: HTTP **`GET /json`** (`McpChromeJsonTarget`, поле `url`).
-- **`pageId`**: 1-based индекс в списке page targets (как в chrome-devtools-mcp).
-- **`select_page`**: **`SwitchDevToolsToTarget`** + опционально **`Target.activateTarget`**.
+- Tab list: HTTP **`GET /json`** (`McpChromeJsonTarget`, `url` field).
+- **`pageId`**: 1-based index in the page targets list (as in chrome-devtools-mcp).
+- **`select_page`**: **`SwitchDevToolsToTarget`** + optional **`Target.activateTarget`**.
 - **`new_page`**: **`Target.createTarget`** → switch.
-- **`close_page`**: switch при необходимости → **`Target.closeTarget`**.
+- **`close_page`**: switch if needed → **`Target.closeTarget`**.
 
 ### Snapshot (uid)
 
-| Компонент | Роль |
+| Component | Role |
 |-----------|------|
-| **`McpSnapshotService`** | `Accessibility.getFullAXTree`, построение дерева, uid |
-| **`McpSnapshotStore`** | Текущий snapshot для резолва uid |
-| **`McpSnapshotFormatter`** | Текстовый вывод для агента (`uid=… role "name"`) |
+| **`McpSnapshotService`** | `Accessibility.getFullAXTree`, tree building, uid |
+| **`McpSnapshotStore`** | Current snapshot for uid resolution |
+| **`McpSnapshotFormatter`** | Text output for the agent (`uid=… role "name"`) |
 
 ### `McpElementActions`
 
@@ -173,43 +173,43 @@ sequenceDiagram
 
 ### `McpDevToolsCollector`
 
-- Включается только при **`EnableDevToolsCollectorOnConnect`** (не путать с **`CATEGORY_NETWORK`** / **`CATEGORY_DEBUGGING`** — те лишь скрывают tools).
-- Буферы сети и консоли с момента последней навигации (`navigate`, `select_page`, `new_page`).
-- События: **`Network.requestWillBeSent`**, **`Runtime.consoleAPICalled`**; **`ResetSubscription`** сбрасывает флаг подписки при disconnect / смене вкладки.
-- Событие **`Changed`** и счётчики **`NetworkCount`** / **`ConsoleCount`** — для WPF runtime panel.
+- Enabled only when **`EnableDevToolsCollectorOnConnect`** (not to be confused with **`CATEGORY_NETWORK`** / **`CATEGORY_DEBUGGING`** — those only hide tools).
+- Network and console buffers since the last navigation (`navigate`, `select_page`, `new_page`).
+- Events: **`Network.requestWillBeSent`**, **`Runtime.consoleAPICalled`**; **`ResetSubscription`** clears the subscription flag on disconnect / tab change.
+- **`Changed`** event and **`NetworkCount`** / **`ConsoleCount`** counters — for WPF runtime panel.
 
 ### `McpOperatorService` / `McpRuntimeMonitor`
 
-- **`McpOperatorService`** — Connect/Disconnect, Navigate, Screenshot, List/Select pages (обёртки над Core, `SingleFlightLock`).
-- **`McpRuntimeMonitor`** — `McpRuntimeSnapshot`, подписка на collector/context, периодический refresh активной вкладки.
-- WPF ViewModels биндятся к snapshot; не вызывают CDP напрямую.
+- **`McpOperatorService`** — Connect/Disconnect, Navigate, Screenshot, List/Select pages (wrappers over Core, `SingleFlightLock`).
+- **`McpRuntimeMonitor`** — `McpRuntimeSnapshot`, subscription to collector/context, periodic refresh of active tab.
+- WPF ViewModels bind to snapshot; do not call CDP directly.
 
 ### `McpHeapSnapshotService`
 
-- **`HeapProfiler.takeHeapSnapshot`** + события **`addHeapSnapshotChunk`** → файл `.heapsnapshot`.
+- **`HeapProfiler.takeHeapSnapshot`** + **`addHeapSnapshotChunk`** events → `.heapsnapshot` file.
 
 ### `McpArtifactPaths`
 
-- Разрешение `filePath` (абсолютный / относительный / каталог артефактов из `McpHostOptions`).
+- Resolves `filePath` (absolute / relative / artifacts directory from `McpHostOptions`).
 
 ### `SingleFlightLock`
 
-Файл: `ZuChromeDriverMcp.Core/Concurrency/SingleFlightLock.cs`
+File: `ZuChromeDriverMcp.Core/Concurrency/SingleFlightLock.cs`
 
-- `SemaphoreSlim(1,1)` — все tools выполняются **строго по одному** (аналог mutex в chrome-devtools-mcp `ToolHandler`).
-- Исключает гонки при общей CDP-сессии и одной вкладке.
+- `SemaphoreSlim(1,1)` — all tools run **strictly one at a time** (analog of mutex in chrome-devtools-mcp `ToolHandler`).
+- Prevents races with a shared CDP session and single tab.
 
 ### `McpResponse`
 
-Файл: `ZuChromeDriverMcp.Core/Responses/McpResponse.cs`
+File: `ZuChromeDriverMcp.Core/Responses/McpResponse.cs`
 
-- Накопление короткого текста для агента.
-- **`ToCallToolResult()`** → `CallToolResult` с **`IsError`** и `TextContentBlock`.
-- Ошибки — actionable message (текст исключения или валидации).
+- Accumulates short text for the agent.
+- **`ToCallToolResult()`** → `CallToolResult` with **`IsError`** and `TextContentBlock`.
+- Errors — actionable message (exception or validation text).
 
-### MCP tools (классы)
+### MCP Tools (Classes)
 
-| Класс | Tools |
+| Class | Tools |
 |-------|-------|
 | **`BrowserTools`** | `navigate`, `evaluate`, `screenshot` |
 | **`PageTools`** | `list_pages`, `select_page`, `new_page`, `close_page` |
@@ -218,28 +218,28 @@ sequenceDiagram
 | **`CollectorTools`** | `list_network_requests`, `list_console_messages` |
 | **`MemoryTools`** | `take_heapsnapshot` |
 
-Атрибуты **`[McpServerToolType]`** / **`[McpServerTool]`** — discovery через **`AddZuChromeDriverMcpTools()`** (`McpServerServiceCollectionExtensions.cs`).
+Attributes **`[McpServerToolType]`** / **`[McpServerTool]`** — discovery via **`AddZuChromeDriverMcpTools()`** (`McpServerServiceCollectionExtensions.cs`).
 
 ---
 
-## WPF (основной хост)
+## WPF (Primary Host)
 
-| Режим | Запуск | Transport |
-|-------|--------|-----------|
-| GUI | `dotnet run --project ZuChromeDriverMcp` | Streamable HTTP на `127.0.0.1:{McpHttpPort}{McpHttpPath}` |
-| Headless | `... -- --stdio` | stdio (как Host) |
+| Mode | Launch | Transport |
+|------|--------|-----------|
+| GUI | `dotnet run --project ZuChromeDriverMcp` | Streamable HTTP on `127.0.0.1:{McpHttpPort}{McpHttpPath}` |
+| Headless | `... -- --stdio` | stdio (like Host) |
 
-- **`WpfAppBootstrap`**: dual-mode entry; GUI — Kestrel в фоне + WPF `Application.Run`.
-- **`McpBrowserShutdownService`**: `ShutdownAsync` при закрытии приложения.
-- Chrome подключается при старте; в GUI — вкладки настроек, профилей, управления и рантайм-панель.
+- **`WpfAppBootstrap`**: dual-mode entry; GUI — Kestrel in background + WPF `Application.Run`.
+- **`McpBrowserShutdownService`**: `ShutdownAsync` on application close.
+- Chrome connects on startup; in GUI — settings, profiles, control, and runtime panel tabs.
 - MVVM: **CommunityToolkit.Mvvm** (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`).
-- Подключение в Cursor: `http://127.0.0.1:5100/mcp` (см. [README](README.md)).
+- Cursor connection: `http://127.0.0.1:5100/mcp` (see [README](README.md)).
 
 ---
 
-## Host (stdio) — второй вариант
+## Host (stdio) — Alternative
 
-Файл: `ZuChromeDriverMcp.Host/Program.cs`
+File: `ZuChromeDriverMcp.Host/Program.cs`
 
 ```csharp
 builder.Services.AddZuChromeDriverMcpCore(options);
@@ -250,60 +250,60 @@ builder.Services
     .AddZuChromeDriverMcpTools();
 ```
 
-Консольный stdio-хост без UI — минимальный вариант для скриптов и CI. В stdout только MCP JSON-RPC; логи — только stderr.
+Console stdio host without UI — minimal option for scripts and CI. stdout is MCP JSON-RPC only; logs go to stderr only.
 
 ---
 
-## Две «session»
+## Two "Sessions"
 
-В коде ZuChromeDriver coexist два понятия (не путать в MCP-доках и tools):
+In ZuChromeDriver code, two concepts coexist (do not confuse in MCP docs and tools):
 
-| Имя | Тип | Уровень |
-|-----|-----|---------|
+| Name | Type | Level |
+|------|------|-------|
 | **Session** | `Zu.Chrome.DriverCore.Session` | WebDriver: frames, timeouts, sticky modifiers |
-| **ChromeSession** | `Zu.ChromeDevToolsClient` WebSocket | CDP JSON-RPC, домены Page/Runtime/DOM |
+| **ChromeSession** | `Zu.ChromeDevToolsClient` WebSocket | CDP JSON-RPC, Page/Runtime/DOM domains |
 
-MCP-слой работает через **`ZuChromeDriver`**, не открывая второй WebSocket.
+The MCP layer works through **`ZuChromeDriver`**, without opening a second WebSocket.
 
 ---
 
-## Сопоставление с chrome-devtools-mcp
+## Comparison with chrome-devtools-mcp
 
-| chrome-devtools-mcp | ZuChromeDriverMcp (сейчас) |
+| chrome-devtools-mcp | ZuChromeDriverMcp (current) |
 |---------------------|------------------------------|
 | `@modelcontextprotocol/sdk` + stdio | NuGet **`ModelContextProtocol`** 1.3 |
-| `McpContext` + selected page | **`McpBrowserContext`** + одна активная вкладка |
+| `McpContext` + selected page | **`McpBrowserContext`** + one active tab |
 | `ToolHandler` + mutex | **`SingleFlightLock`** + **`BrowserTools`** |
 | `McpResponse` | **`McpResponse`** → **`CallToolResult`** |
 | navigate / evaluate / screenshot | ✅ |
 | list_pages, snapshot, click/fill, collectors | ✅ |
 | take_heapsnapshot | ✅ (CDP) |
-| performance trace, lighthouse_audit, performance_analyze_insight | TODO (см. [README](README.md#todo)) |
+| performance trace, lighthouse_audit, performance_analyze_insight | TODO (see [README](README.md#todo)) |
 
 ---
 
-## Что не входит в MCP-слой
+## What Is Not in the MCP Layer
 
-- Генерация и поддержка CDP-типов (**ChromeDevToolsClientGenerator**).
-- Атомы Selenium-style (**`atoms.cs`**, **`ElementCommands`**) — вызываются из **`InputTools`** (selector); uid — через CDP resolve + callFunctionOn.
-- Парсинг heap snapshot / experimental memory tools — только в Node (не портировано).
-- Daemon + named pipe — не планируется.
+- CDP type generation and maintenance (**ChromeDevToolsClientGenerator**).
+- Selenium-style atoms (**`atoms.cs`**, **`ElementCommands`**) — called from **`InputTools`** (selector); uid — via CDP resolve + callFunctionOn.
+- Heap snapshot parsing / experimental memory tools — Node only (not ported).
+- Daemon + named pipe — not planned.
 
 ---
 
-## Расширение (ориентиры)
+## Extension (Guidelines)
 
-| Задача | Куда добавлять |
-|--------|----------------|
-| Новый MCP tool | `ZuChromeDriverMcp.Core/Tools/` + `AddZuChromeDriverMcpTools()` |
+| Task | Where to add |
+|------|--------------|
+| New MCP tool | `ZuChromeDriverMcp.Core/Tools/` + `AddZuChromeDriverMcpTools()` |
 | Snapshot uid | `ZuChromeDriverMcp.Core/Snapshot/` |
 | Network/console collectors | `McpDevToolsCollector` |
-| Переключение вкладок | `McpPageService` |
-| Изменение Connect/iframe | **ZuChromeDriver** + флаги **`ChromeDriverConfig`** |
+| Tab switching | `McpPageService` |
+| Connect/iframe changes | **ZuChromeDriver** + **`ChromeDriverConfig`** flags |
 
 ---
 
-## Связанные документы
+## Related Documents
 
-- [README.md](README.md) — быстрый старт
-- [ZuChromeDriver](https://github.com/ToCSharp/ZuChromeDriver) — драйвер CDP и WebDriver-фасад
+- [README.md](README.md) — quick start
+- [ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver) — CDP driver and WebDriver facade
