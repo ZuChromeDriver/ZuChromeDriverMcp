@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ZuChromeDriverMcp/ZuChromeDriverMcp.csproj" />
+  <Project Path="ZuChromeDriverMcp.Core/ZuChromeDriverMcp.Core.csproj" />
+  <Project Path="ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj" />
+</Solution>

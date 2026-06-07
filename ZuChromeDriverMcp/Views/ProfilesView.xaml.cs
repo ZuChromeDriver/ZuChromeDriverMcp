@@ -1,0 +1,9 @@
+namespace ZuChromeDriverMcp.Views;
+
+public partial class ProfilesView
+{
+    public ProfilesView()
+    {
+        InitializeComponent();
+    }
+}

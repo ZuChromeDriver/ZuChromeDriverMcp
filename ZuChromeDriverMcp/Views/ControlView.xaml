@@ -1,0 +1,39 @@
+<UserControl x:Class="ZuChromeDriverMcp.Views.ControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="Connect" Command="{Binding ConnectCommand}" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Disconnect" Command="{Binding DisconnectCommand}" Padding="12,6" Margin="0,0,8,0" />
+            <TextBox Text="{Binding NavigateUrl, UpdateSourceTrigger=PropertyChanged}" Width="360" Margin="0,0,8,0" />
+            <Button Content="Navigate" Command="{Binding NavigateCommand}" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Screenshot" Command="{Binding ScreenshotCommand}" Padding="12,6" />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <WrapPanel>
+                <TextBlock Text="{Binding LastScreenshotPath, StringFormat=Last screenshot: {0}}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Button Content="Open folder" Command="{Binding OpenLastScreenshotFolderCommand}" Padding="8,4" VerticalAlignment="Center" />
+            </WrapPanel>
+        </StackPanel>
+
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="Refresh pages" Command="{Binding RefreshPagesCommand}" Padding="12,6" Margin="0,0,8,0" />
+                <Button Content="Select page" Command="{Binding SelectPageCommand}" Padding="12,6" />
+            </StackPanel>
+            <DataGrid ItemsSource="{Binding Pages}"
+                      SelectedItem="{Binding SelectedPage}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding PageId}" Width="50" />
+                    <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="180" />
+                    <DataGridTextColumn Header="URL" Binding="{Binding Url}" Width="*" />
+                    <DataGridCheckBoxColumn Header="Selected" Binding="{Binding IsSelected}" Width="80" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </DockPanel>
+</UserControl>

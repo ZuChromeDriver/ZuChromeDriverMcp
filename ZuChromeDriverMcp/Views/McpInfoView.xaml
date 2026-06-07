@@ -1,0 +1,29 @@
+<UserControl x:Class="ZuChromeDriverMcp.Views.McpInfoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="12" MaxWidth="900">
+        <TextBlock Text="MCP transport" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="{Binding TransportMode}" Margin="0,0,0,8" />
+        <TextBlock Text="HTTP endpoint" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <TextBox Text="{Binding HttpEndpointUrl, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="Copy URL" Command="{Binding CopyUrlCommand}" Padding="12,6" Margin="0,0,8,0" />
+            <Button Content="Copy sample config" Command="{Binding CopyConfigCommand}" Padding="12,6" />
+        </StackPanel>
+
+        <TextBlock Text="Sample client config (Streamable HTTP)" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <TextBox Text="{Binding SampleClientConfig, Mode=OneWay}"
+                 IsReadOnly="True"
+                 TextWrapping="Wrap"
+                 AcceptsReturn="True"
+                 Height="160"
+                 VerticalScrollBarVisibility="Auto"
+                 Margin="0,0,0,16" />
+
+        <TextBlock TextWrapping="Wrap" Foreground="Gray">
+            For Cursor and Claude Desktop, use ZuChromeDriverMcp.Host (stdio).
+            WPF GUI mode exposes Streamable HTTP on localhost for clients that support it.
+            Headless stdio: ZuChromeDriverMcp.exe --stdio
+        </TextBlock>
+    </StackPanel>
+</UserControl>
