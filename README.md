@@ -1,6 +1,6 @@
 # ZuChromeDriverMcp
 
-MCP-сервер для автоматизации Chrome из .NET: [Model Context Protocol](https://modelcontextprotocol.io/) поверх **[ZuChromeDriver](https://github.com/ToCSharp/ZuChromeDriver)**, без PuppeteerSharp и без дублирования CDP-клиента.
+MCP-сервер для автоматизации Chrome из .NET: [Model Context Protocol](https://modelcontextprotocol.io/) поверх **[ZuChromeDriver](https://github.com/ZuChromeDriver/ZuChromeDriver)**, без PuppeteerSharp и без дублирования CDP-клиента.
 
 Два MCP-хоста поверх общего **`ZuChromeDriverMcp.Core`**:
 
