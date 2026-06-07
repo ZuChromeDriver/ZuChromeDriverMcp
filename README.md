@@ -4,10 +4,12 @@ MCP server for Chrome automation from .NET: [Model Context Protocol](https://mod
 
 Two MCP hosts on top of shared **`ZuChromeDriverMcp.Core`**:
 
-| Host | Purpose |
-|------|---------|
-| **`ZuChromeDriverMcp`** (WPF) | **Recommended** — UI with settings, profiles, and runtime panel; HTTP MCP on localhost; headless stdio via `--stdio` |
-| **`ZuChromeDriverMcp.Host`** | Console stdio host without UI — minimal option |
+
+| Host                        | Purpose                                                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **ZuChromeDriverMcp** (WPF) | **Recommended** — UI with settings, profiles, and runtime panel; HTTP MCP on localhost; headless stdio via `--stdio` |
+| **ZuChromeDriverMcp.Host**  | Console stdio host without UI — minimal option                                                                       |
+
 
 ## Features
 
@@ -55,11 +57,13 @@ Profile directory: `{exe_dir}/Profiles/` (next to the executable). The list and 
 
 Created by default:
 
-| Profile | Type | Path |
-|---------|------|------|
-| **Temp** | Temporary | `%TEMP%` — deleted when Chrome closes |
-| **Profile1** | Folder | `{exe_dir}/Profiles/Profile1` |
-| **Profile2** | Folder | `{exe_dir}/Profiles/Profile2` |
+
+| Profile      | Type      | Path                                  |
+| ------------ | --------- | ------------------------------------- |
+| **Temp**     | Temporary | `%TEMP%` — deleted when Chrome closes |
+| **Profile1** | Folder    | `{exe_dir}/Profiles/Profile1`         |
+| **Profile2** | Folder    | `{exe_dir}/Profiles/Profile2`         |
+
 
 On the **Profiles** tab you can select the active profile, add a folder profile (subfolder in `Profiles/`), or a profile with a custom path. The selection is saved for future runs.
 
@@ -75,6 +79,15 @@ On the **Profiles** tab you can select the active profile, add a folder profile 
 }
 ```
 
+## Typical Agent Workflow
+
+1. Download and run **[ZuChromeDriverMcp-0.1.0-win-x64.zip](https://github.com/ZuChromeDriver/ZuChromeDriverMcp/releases/download/v0.1.0/ZuChromeDriverMcp-0.1.0-win-x64.zip)** — extract and start **ZuChromeDriverMcp.exe**. The MCP server is ready immediately at `http://127.0.0.1:5100/mcp` (no extra setup).
+2. Add the MCP server in Cursor (see [Connecting in Cursor](#connecting-in-cursor)).
+3. In Cursor chat, ask:
+  > zu open [https://www.browserscan.net/bot-detection](https://www.browserscan.net/bot-detection)
+
+The agent uses MCP tools to launch Chrome and navigate to the page (for example, to check bot-detection signals).
+
 ### Host (stdio) — Alternative
 
 Second MCP host: console stdio without UI — minimal option for scripts and CI:
@@ -89,32 +102,25 @@ Optionally — disable a tool category (as in chrome-devtools-mcp):
 dotnet run --project ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj -- --category-network=false
 ```
 
-Logs are written to **stderr**; stdout is reserved for JSON-RPC MCP — do not redirect it to the console manually.
-
-## Typical Agent Workflow
-
-1. `list_pages` → select a tab  
-2. `select_page` with `pageId`  
-3. `navigate` or `new_page`  
-4. `take_snapshot` → get element **uid**  
-5. `click` / `fill` with `uid` (or `selector` for simple cases)  
-6. If needed — `list_console_messages` / `list_network_requests`
-
 ## Solution Structure
 
-| Project | Purpose |
-|---------|---------|
-| **`ZuChromeDriverMcp.Host`** | Console, MCP stdio, DI, Chrome lifecycle |
-| **`ZuChromeDriverMcp.Core`** | Tools, snapshot, pages, collectors, mutex |
-| **`ZuChromeDriverMcp`** | WPF — second MCP host: HTTP + `--stdio`, MVVM UI, runtime panel |
-| **`ZuChromeDriver`** *(NuGet)* | CDP driver + WebDriver facade |
-| **`ChromeDevToolsClient`** *(NuGet, transitive)* | WebSocket JSON-RPC to CDP |
+
+| Project                                        | Purpose                                                         |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| **ZuChromeDriverMcp.Host**                     | Console, MCP stdio, DI, Chrome lifecycle                        |
+| **ZuChromeDriverMcp.Core**                     | Tools, snapshot, pages, collectors, mutex                       |
+| **ZuChromeDriverMcp**                          | WPF — second MCP host: HTTP + `--stdio`, MVVM UI, runtime panel |
+| **ZuChromeDriver** *(NuGet)*                   | CDP driver + WebDriver facade                                   |
+| **ChromeDevToolsClient** *(NuGet, transitive)* | WebSocket JSON-RPC to CDP                                       |
+
 
 ## Documentation
 
-| Document | Contents |
-|----------|----------|
+
+| Document                           | Contents                                       |
+| ---------------------------------- | ---------------------------------------------- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | MCP layer architecture, data flows, components |
+
 
 ## Principles
 
