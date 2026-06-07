@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (empty = use Version from ZuChromeDriverMcp.csproj)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $manual = '${{ inputs.version }}'
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and $manual) {
+            $value = $manual
+          }
+          elseif ('${{ github.ref_type }}' -eq 'tag') {
+            $value = '${{ github.ref_name }}' -replace '^v', ''
+          }
+          else {
+            $value = ''
+          }
+          "value=$value" >> $env:GITHUB_OUTPUT
+
+      - name: Publish WPF host
+        shell: pwsh
+        run: |
+          $args = @(
+            "publish", "ZuChromeDriverMcp/ZuChromeDriverMcp.csproj",
+            "-c", "Release",
+            "-o", "artifacts/ZuChromeDriverMcp"
+          )
+          $version = '${{ steps.version.outputs.value }}'
+          if ($version) {
+            $args += @("-p:Version=$version", "-p:AssemblyVersion=$version", "-p:FileVersion=$version")
+          }
+          dotnet @args
+
+      - name: Publish console host
+        shell: pwsh
+        run: |
+          $args = @(
+            "publish", "ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj",
+            "-c", "Release",
+            "-o", "artifacts/ZuChromeDriverMcp.Host"
+          )
+          $version = '${{ steps.version.outputs.value }}'
+          if ($version) {
+            $args += @("-p:Version=$version", "-p:AssemblyVersion=$version", "-p:FileVersion=$version")
+          }
+          dotnet @args
+
+      - name: Create release archives
+        id: archive
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          if (-not $version) {
+            $version = (Select-Xml -Path ZuChromeDriverMcp/ZuChromeDriverMcp.csproj -XPath '//Version' -ErrorAction SilentlyContinue).Node.InnerText
+          }
+          if (-not $version) { $version = '0.0.0' }
+
+          Compress-Archive -Path artifacts/ZuChromeDriverMcp/* -DestinationPath "artifacts/ZuChromeDriverMcp-$version-win-x64.zip" -Force
+          Compress-Archive -Path artifacts/ZuChromeDriverMcp.Host/* -DestinationPath "artifacts/ZuChromeDriverMcp.Host-$version-win-x64.zip" -Force
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $tag = "v${{ steps.archive.outputs.version }}"
+          }
+
+          $notes = @"
+          ## ZuChromeDriverMcp $tag
+
+          Windows x64, framework-dependent (.NET 10 runtime required).
+
+          | Asset | Description |
+          |-------|-------------|
+          | ``ZuChromeDriverMcp-*-win-x64.zip`` | WPF host (GUI + HTTP MCP + ``--stdio``) |
+          | ``ZuChromeDriverMcp.Host-*-win-x64.zip`` | Console stdio host |
+
+          Extract the archive and run ``ZuChromeDriverMcp.exe`` or ``ZuChromeDriverMcp.Host.exe``.
+          "@
+
+          gh release create $tag `
+            --title $tag `
+            --notes $notes `
+            "artifacts/ZuChromeDriverMcp-${{ steps.archive.outputs.version }}-win-x64.zip" `
+            "artifacts/ZuChromeDriverMcp.Host-${{ steps.archive.outputs.version }}-win-x64.zip"

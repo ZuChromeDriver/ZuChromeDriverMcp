@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish WPF host
+        run: dotnet publish ZuChromeDriverMcp/ZuChromeDriverMcp.csproj -c Release -o artifacts/ZuChromeDriverMcp
+
+      - name: Publish console host
+        run: dotnet publish ZuChromeDriverMcp.Host/ZuChromeDriverMcp.Host.csproj -c Release -o artifacts/ZuChromeDriverMcp.Host
+
+      - name: Verify WPF publish output
+        shell: pwsh
+        run: |
+          $wpf = "artifacts/ZuChromeDriverMcp"
+          @(
+            "ZuChromeDriverMcp.exe",
+            "ZuChromeDriverMcp.dll",
+            "ZuChromeDriverMcp.Core.dll",
+            "ZuChromeDriver.dll",
+            "ChromeDevToolsClient.dll"
+          ) | ForEach-Object {
+            if (-not (Test-Path "$wpf/$_")) { throw "Missing $wpf/$_" }
+          }
+
+      - name: Verify Host publish output
+        shell: pwsh
+        run: |
+          $hostDir = "artifacts/ZuChromeDriverMcp.Host"
+          @(
+            "ZuChromeDriverMcp.Host.exe",
+            "ZuChromeDriverMcp.Host.dll",
+            "ZuChromeDriverMcp.Core.dll",
+            "ZuChromeDriver.dll",
+            "ChromeDevToolsClient.dll"
+          ) | ForEach-Object {
+            if (-not (Test-Path "$hostDir/$_")) { throw "Missing $hostDir/$_" }
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-publish
+          path: |
+            artifacts/ZuChromeDriverMcp/**
+            artifacts/ZuChromeDriverMcp.Host/**
+          retention-days: 7
